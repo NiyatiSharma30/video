@@ -8,6 +8,7 @@
 <body>
     <h1>AI Psychiatrist Video Call</h1>
     <video id="localVideo" autoplay playsinline></video>
+    <video id="avatarVideo" autoplay playsinline></video> <!-- ✅ Added Avatar Video -->
     <p>Detected Emotion: <span id="emotion">Neutral</span></p>
     <button onclick="startCall()">Start Video Call</button>
 
@@ -20,35 +21,40 @@
             document.getElementById('localVideo').srcObject = localStream;
             
             // 🔹 Use your Render backend URL
-           ws = new WebSocket("wss://ai-psychiatrist.onrender.com/emotion");
+            ws = new WebSocket("wss://ai-psychiatrist.onrender.com/emotion");
 
+            ws.onopen = () => console.log("✅ WebSocket Connected");
+            ws.onerror = (error) => console.error("❌ WebSocket Error:", error);
+            ws.onclose = () => console.log("❌ WebSocket Closed");
 
-            ws.onopen = () => {
-                console.log("Connected to WebSocket");
-            };
-
-            ws.onmessage = function(event) {
+            ws.onmessage = async function(event) {
+                console.log("📩 Received Data:", event.data);
+                
                 const data = JSON.parse(event.data);
-                const emotionElement = document.getElementById("emotion");
-
-                if (data.length > 0 && data[0].emotions) {
-                    const detectedEmotion = Object.keys(data[0].emotions).reduce((a, b) => 
-                        data[0].emotions[a] > data[0].emotions[b] ? a : b
-                    );
-                    emotionElement.innerText = detectedEmotion;
+                
+                // ✅ Correct Emotion Display
+                if (data.emotion) {
+                    document.getElementById("emotion").innerText = data.emotion;
                 } else {
-                    emotionElement.innerText = "Neutral";
+                    document.getElementById("emotion").innerText = "Neutral";
+                }
+
+                // ✅ Request Avatar Response
+                try {
+                    let avatarResponse = await fetch("https://ai-psychiatrist.onrender.com/generate_avatar/", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ emotion: data.emotion || "Neutral" })
+                    });
+
+                    let avatarData = await avatarResponse.json();
+                    document.getElementById("avatarVideo").src = avatarData.result_url;
+                } catch (error) {
+                    console.error("❌ Avatar Request Failed:", error);
                 }
             };
 
-            ws.onerror = (error) => {
-                console.error("WebSocket Error:", error);
-            };
-
-            ws.onclose = () => {
-                console.log("WebSocket Closed");
-            };
-
+            // ✅ Send Frames Every 1 Second
             setInterval(async () => {
                 const video = document.getElementById("localVideo");
                 const canvas = document.createElement("canvas");
@@ -59,7 +65,7 @@
                 
                 const frameData = canvas.toDataURL("image/jpeg").split(",")[1];
 
-                // 🔹 Send data as JSON, not raw Base64
+                // 🔹 Send JSON with Base64 Image
                 ws.send(JSON.stringify({ image: frameData }));
             }, 1000);
         }
