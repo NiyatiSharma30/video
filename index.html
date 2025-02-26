@@ -8,7 +8,7 @@
 <body>
     <h1>AI Psychiatrist Video Call</h1>
     <video id="localVideo" autoplay playsinline></video>
-    <video id="avatarVideo" autoplay playsinline></video> <!-- ✅ Added Avatar Video -->
+    <video id="avatarVideo" autoplay playsinline></video>
     <p>Detected Emotion: <span id="emotion">Neutral</span></p>
     <button onclick="startCall()">Start Video Call</button>
 
@@ -19,8 +19,7 @@
         async function startCall() {
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             document.getElementById('localVideo').srcObject = localStream;
-            
-            // 🔹 Use your Render backend URL
+
             ws = new WebSocket("wss://ai-psychiatrist.onrender.com/emotion");
 
             ws.onopen = () => console.log("✅ WebSocket Connected");
@@ -29,17 +28,10 @@
 
             ws.onmessage = async function(event) {
                 console.log("📩 Received Data:", event.data);
-                
                 const data = JSON.parse(event.data);
-                
-                // ✅ Correct Emotion Display
-                if (data.emotion) {
-                    document.getElementById("emotion").innerText = data.emotion;
-                } else {
-                    document.getElementById("emotion").innerText = "Neutral";
-                }
 
-                // ✅ Request Avatar Response
+                document.getElementById("emotion").innerText = data.emotion || "Neutral";
+
                 try {
                     let avatarResponse = await fetch("https://ai-psychiatrist.onrender.com/generate_avatar/", {
                         method: "POST",
@@ -48,13 +40,12 @@
                     });
 
                     let avatarData = await avatarResponse.json();
-                    document.getElementById("avatarVideo").src = avatarData.result_url;
+                    playAvatarVideo(avatarData.result_url);
                 } catch (error) {
                     console.error("❌ Avatar Request Failed:", error);
                 }
             };
 
-            // ✅ Send Frames Every 1 Second
             setInterval(async () => {
                 const video = document.getElementById("localVideo");
                 const canvas = document.createElement("canvas");
@@ -62,12 +53,17 @@
                 canvas.height = video.videoHeight;
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                const frameData = canvas.toDataURL("image/jpeg").split(",")[1];
 
-                // 🔹 Send JSON with Base64 Image
-                ws.send(JSON.stringify({ image: frameData }));
+                const frameData = canvas.toDataURL("image/jpeg").split(",")[1];
+                ws.send(frameData);
             }, 1000);
+        }
+
+        async function playAvatarVideo(url) {
+            let video = document.getElementById("avatarVideo");
+            video.src = url;
+            video.load();
+            video.play();
         }
     </script>
 </body>
