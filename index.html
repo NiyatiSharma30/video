@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Psychiatrist</title>
+</head>
+<body>
+    <h1>AI Psychiatrist Video Call</h1>
+    <video id="localVideo" autoplay playsinline></video>
+    <p>Detected Emotion: <span id="emotion">Neutral</span></p>
+    <button onclick="startCall()">Start Video Call</button>
+
+    <script>
+        let ws;
+        let localStream;
+
+        async function startCall() {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('localVideo').srcObject = localStream;
+            
+            // 🔹 Use your Render backend URL
+           ws = new WebSocket("wss://ai-psychiatrist.onrender.com/emotion");
+
+
+            ws.onopen = () => {
+                console.log("Connected to WebSocket");
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                const emotionElement = document.getElementById("emotion");
+
+                if (data.length > 0 && data[0].emotions) {
+                    const detectedEmotion = Object.keys(data[0].emotions).reduce((a, b) => 
+                        data[0].emotions[a] > data[0].emotions[b] ? a : b
+                    );
+                    emotionElement.innerText = detectedEmotion;
+                } else {
+                    emotionElement.innerText = "Neutral";
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error("WebSocket Error:", error);
+            };
+
+            ws.onclose = () => {
+                console.log("WebSocket Closed");
+            };
+
+            setInterval(async () => {
+                const video = document.getElementById("localVideo");
+                const canvas = document.createElement("canvas");
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const frameData = canvas.toDataURL("image/jpeg").split(",")[1];
+
+                // 🔹 Send data as JSON, not raw Base64
+                ws.send(JSON.stringify({ image: frameData }));
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
