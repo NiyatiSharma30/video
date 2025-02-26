@@ -23,6 +23,7 @@
                 document.getElementById('localVideo').srcObject = localStream;
 
                 // ✅ Open WebSocket connection
+
                 ws = new WebSocket("wss://ai-psychiatrist.onrender.com/emotion");
 
                 ws.onopen = () => console.log("✅ WebSocket Connected");
