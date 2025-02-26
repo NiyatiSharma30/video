@@ -64,18 +64,24 @@
                             console.warn("⚠️ WebSocket not open. Skipping frame send.");
                             return;
                         }
+                           const canvas = document.createElement("canvas");
+                           const ctx = canvas.getContext("2d");
+                           canvas.width = video.width;
+                           canvas.height = video.height;
+                           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                        const video = document.getElementById("localVideo");
-                        const canvas = document.createElement("canvas");
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        const ctx = canvas.getContext("2d");
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+// Convert to Base64
+                           const imageData = canvas.toDataURL("image/jpeg");  // "data:image/jpeg;base64,..."
 
-                        const frameData = canvas.toDataURL("image/jpeg").split(",")[1];
+// Extract Base64 content only
+                           const base64Data = imageData.split(",")[1];
 
-                        // ✅ Send JSON format (previously sending raw frame, which is incorrect)
-                        ws.send(JSON.stringify({ image: frameData }));
+// Ensure correct Base64 padding
+                           const fixedBase64Data = base64Data.padEnd(Math.ceil(base64Data.length / 4) * 4, "=");
+
+                           ws.send(fixedBase64Data);
+
+
                     } catch (error) {
                         console.error("❌ Error sending frame:", error);
                     }
