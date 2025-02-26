@@ -23,7 +23,6 @@
                 document.getElementById('localVideo').srcObject = localStream;
 
                 // ✅ Open WebSocket connection
-
                 ws = new WebSocket("wss://ai-psychiatrist.onrender.com/emotion");
 
                 ws.onopen = () => console.log("✅ WebSocket Connected");
@@ -64,23 +63,23 @@
                             console.warn("⚠️ WebSocket not open. Skipping frame send.");
                             return;
                         }
-                           const canvas = document.createElement("canvas");
-                           const ctx = canvas.getContext("2d");
-                           canvas.width = video.width;
-                           canvas.height = video.height;
-                           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-// Convert to Base64
-                           const imageData = canvas.toDataURL("image/jpeg");  // "data:image/jpeg;base64,..."
+                        const video = document.getElementById("localVideo"); // ✅ Ensure video is defined
+                        if (!video.videoWidth || !video.videoHeight) {
+                            console.warn("⚠️ Video not ready yet. Skipping frame.");
+                            return;
+                        }
 
-// Extract Base64 content only
-                           const base64Data = imageData.split(",")[1];
+                        const canvas = document.createElement("canvas");
+                        const ctx = canvas.getContext("2d");
+                        canvas.width = video.videoWidth; // ✅ Use video dimensions
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-// Ensure correct Base64 padding
-                           const fixedBase64Data = base64Data.padEnd(Math.ceil(base64Data.length / 4) * 4, "=");
+                        const imageData = canvas.toDataURL("image/jpeg");  // "data:image/jpeg;base64,..."
+                        const base64Data = imageData.split(",")[1];  // ✅ Extract only Base64 content
 
-                           ws.send(fixedBase64Data);
-
+                        ws.send(base64Data); // ✅ Send without unnecessary padding
 
                     } catch (error) {
                         console.error("❌ Error sending frame:", error);
